@@ -15,5 +15,6 @@ Use-case:
 Design principles:
 * load balancing, i.e. each pod handles the same number of request
 * checkpoint - if there is a crash, it can recover and continue
+* stop on-demand - we can stop the run, if there is a need to release resource or add more resource
 * adaptable - if there are more resource available, it can be restarted and use more resource
  
