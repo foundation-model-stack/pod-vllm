@@ -4,13 +4,14 @@ Source code to launch a number of pods, performing synthetic data generation
 Requirements: 
 * you have access to a namespace/project (e.g. tuan) in a K8s cluster or OCP cluster
 * you have two NFS-mounted VPC: /model/ and /result
-* you have access to HuggingFace to download model, e.g. meta-llama/Meta-Llama-3.1-405B-Instruct-FP8
+* you have access to HuggingFace to download model, e.g. meta-llama/Meta-Llama-3.1-405B-Instruct-FP8 (i.e. HF token, and model download is approved)
 
 Use-case:
 * you have a bunch of JSONL files, each line is a dictionary with 'prompt' key
 * the file sizes can vary, i.e. some small in sizes and some of very large size
 * you want to use the prompt to generate output (e.g. synthetic data)
 * the generated data will be saved to the NFS-mounted VPC
+* the data is copied back to S3-backend, e.g. IBM COS.
 
 Design principles:
 * load balancing, i.e. each pod handles the same number of request
@@ -18,7 +19,7 @@ Design principles:
 * stop on-demand - we can stop the run, if there is a need to release resource or add more resource
 * adaptable - if there are more resource available, it can be restarted and use more resource
 
-NOTE: We can use Ray to do this job, but this is a simple approach with performant and easy to run.
+NOTE: The code can be adopted to use Ray or Spark on K8s/OCP to do this job, but this is a simple approach with performant and easy to run with minimal installation required for K8s/OCP admin.
  
 # Step-1 : create pods
 
@@ -36,7 +37,7 @@ NOTE: We can use Ray to do this job, but this is a simple approach with performa
   ./create_pods.sh
   ```
   
-The pods are named using the convention `gen-pod-<id>` with `<id>` is a 2-letter number, e.g. `gen-pod-01`.
+The pods are named using the convention `gen-pod-<id>` with `<id>` is a 2-letter number, e.g. `gen-pod-01`. It can be changed by modifying the `POD_PREFIX` env variable in `create_pods.sh`. 
 
 
 # Step-2 : copy scripts 2 pods
