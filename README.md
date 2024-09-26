@@ -17,6 +17,8 @@ Design principles:
 * checkpoint - if there is a crash, it can recover and continue
 * stop on-demand - we can stop the run, if there is a need to release resource or add more resource
 * adaptable - if there are more resource available, it can be restarted and use more resource
+
+NOTE: We can use Ray to do this job, but this is a simple approach with performant and easy to run.
  
 # Step-1 : create pods
 
