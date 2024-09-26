@@ -42,12 +42,12 @@ def copy2pod(id=1):
     for fname in fnames:
         tmux = "tmux new-session -d "
         if fname.endswith(".sh"):
-            cmd = tmux + f"${POD_WORKDIR}/{fname}"
+            cmd = tmux + f"{POD_WORKDIR}/{fname}"
             continue
         elif fname.endswith(".tar"):
-            cmd = f"""  bash -c "cd ${POD_WORKDIR} && tar -xvf ${POD_WORKDIR}/{fname}" """
+            cmd = f"""  bash -c "cd {POD_WORKDIR} && tar -xvf {POD_WORKDIR}/{fname}" """
         elif fname.startswith("datalake"):
-            cmd = f"pip install ${POD_WORKDIR}/{fname}"
+            cmd = f"pip install {POD_WORKDIR}/{fname}"
         cmd = f"kubectl exec {podname} -- {cmd}"
         # print(cmd)
 
