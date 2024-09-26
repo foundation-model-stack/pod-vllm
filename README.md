@@ -18,3 +18,18 @@ Design principles:
 * stop on-demand - we can stop the run, if there is a need to release resource or add more resource
 * adaptable - if there are more resource available, it can be restarted and use more resource
  
+# Step-1 : create pods
+
+* modify `vllm-pod.yaml` file to get
+  + the correct PVC names, e.g. `llama-tuan` and `llama-results-tuan`
+  + the secret key `GIT_PAT`
+  + the right image name
+
+* modify `create_pods.sh` and choose the number of pods to create via `NUM_PODS`
+
+* ensure that you are logged into your OCP cluster, and from your local machine, run it
+
+  ```
+  chmod +x create_pods.sh
+  ./create_pods.sh
+  ```
