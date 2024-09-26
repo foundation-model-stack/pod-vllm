@@ -33,3 +33,5 @@ Design principles:
   chmod +x create_pods.sh
   ./create_pods.sh
   ```
+  
+The pods are named using the convention `gen-pod-<id>` with `<id>` is a 2-letter number, e.g. `gen-pod-01`.
