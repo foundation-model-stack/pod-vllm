@@ -38,7 +38,7 @@ def run_in_pod(id=1):
         elif fname.endswith(".tar"):
             cmd = f"""  bash -c "cd {POD_WORKDIR} && tar -xvf {POD_WORKDIR}/{fname}" """
         elif fname.startswith("datalake"):
-            cmd = f"pip install ${POD_WORKDIR}/{fname}"
+            cmd = f"pip install {POD_WORKDIR}/{fname}"
         cmd = f"kubectl exec {podname} -- {cmd}"
         print(cmd)
         import subprocess
