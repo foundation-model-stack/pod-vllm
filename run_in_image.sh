@@ -28,5 +28,5 @@ chmod +x raga-gen/gen2
 # OR
 # -w 11 = 11 pods
 #cd raga-gen; PYTHONUNBUFFERED=1 ./gen2 -m "${MODEL_NAME}"  -t 1 -b 1 -p "${BASE_PATH}" -w 11 -o "${OUTPUT_PATH}" -x 16384  # debug
-cd raga-gen; PYTHONUNBUFFERED=1 ./gen2 -m "${MODEL_NAME}"  -t 8 -b 1 -p "${BASE_PATH}" -w ${WORKER_POOL} -o "${OUTPUT_PATH}" -x 16384 2>&1 | tee log_output.txt
+cd raga-gen; PYTHONUNBUFFERED=1 ./gen2 -m "${MODEL_NAME}"  -t 8 -b 1 -p "${BASE_PATH}" -w ${WORKER_POOL} -o "${OUTPUT_PATH}" -x 16384
 cd -
