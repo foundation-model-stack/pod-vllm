@@ -35,3 +35,18 @@ Design principles:
   ```
   
 The pods are named using the convention `gen-pod-<id>` with `<id>` is a 2-letter number, e.g. `gen-pod-01`.
+
+
+# Step-2 : copy scripts 2 pods
+
+We don't want to copy data to pod via `kubectl cp` as it overloads K8s/OCP API Server. Data should be copied to S3 storage, e.g. IBM COS; and then download to mounted VPC storage. 
+
+Here, we only copy scripts file to each pod. The datalake library is copied as well to support operations with S3 storage.
+
+```
+python copy2image.py
+```
+
+# Step-3 : send jobs to pods
+
+
