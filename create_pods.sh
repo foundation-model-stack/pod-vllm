@@ -14,7 +14,7 @@ do
     oc apply -f ${POD_YAML}
 done
 
-for id in $(seq -f "%02g" 1 11)
+for id in $(seq -f "%02g" 1 ${NUM_PODS})
 do
     export POD_NAME="gen-pod-${id}"
     ./wait_pod.sh  ${POD_NAME}

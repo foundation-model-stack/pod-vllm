@@ -62,7 +62,7 @@ class StatusFile:
     def configure_run(self, last_run, **kwargs):
         self.data["run"][last_run] = {
             # each successful run process these many lines
-            "num_lines": self.num_lines,
+            #"num_lines": self.num_lines,
             "num_workers": self.num_workers,
         }
         self.data["run"][last_run].update(kwargs)
@@ -87,6 +87,11 @@ class StatusFile:
                 num_rows = int(self.data["run"][last_run]["num_rows"])
                 lines = read_prompt(fname, start_row, start_row + num_rows - 1, keep_all=(prompt_only is False))
                 self.fake_fname = f"{fname}__{start_row}_{len(lines)}"
+                self.data["run"][last_run].update(
+                    {
+                        "done": True, # place-holder to be used for saved later
+                    }
+                )
                 return lines
         start_row = (int(worker_id) - 1) * num_rows + 1  # 1-based index
         mdict = {
@@ -97,8 +102,14 @@ class StatusFile:
             "done": False,
         }
         # self.fake_fname = f"{fname}__{start_row}_{num_rows}"
+        self.last_run = last_run
         self.configure_run(last_run, **mdict)
         self.save()
+        self.data["run"][last_run].update(
+            {
+            "done": True, # place-holder to be used for saved later
+            }
+        )
         lines = read_prompt(fname, start_row, start_row + num_rows - 1, keep_all=(prompt_only is False))
         self.fake_fname = f"{fname}__{start_row}_{len(lines)}"
         return lines
@@ -275,12 +286,14 @@ def main():
                 if len(lines) > 0:
                     par.file = status.fake_fname
                     stop_request = process_chunk(save_immediately)
+                    status.save()
                 if stop_request:
                     return
                 if len(lines) < status.num_lines and (
                     fname not in status.data["completed"]
                 ):
                     status.data["completed"][fname] = id
+                    status.save()
                     break
                 if is_stop():
                     return

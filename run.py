@@ -5,6 +5,15 @@ NUM_PODS = os.environ.get("NUM_PODS", 11)
 POD_PREFIX = os.environ.get("POD_PREFIX", "gen-pod")
 POD_WORKDIR = "/app"
 
+def kill_job_in_pod(id=1):
+    podname = f"{POD_PREFIX}-{str(id).zfill(2)}"
+    tmux = "tmux kill-session -t 0 "
+    cmd = f""" bash -c " {tmux};"  """
+    cmd = f"kubectl exec {podname} -- {cmd}"
+    print(cmd)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    output = result.stdout.decode("utf-8")
+
 def run_in_pod(id=1):
     podname = f"{POD_PREFIX}-{str(id).zfill(2)}"
     if 0:
@@ -13,7 +22,6 @@ def run_in_pod(id=1):
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         cmd = "apt-get install vim tmux -y"
         cmd = f"kubectl exec {podname} -- {cmd}"
-        #print(cmd)
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     cmd = "tmux new-session -d -s 0"
     cmd = f"kubectl exec {podname} -- {cmd}"
@@ -47,3 +55,4 @@ def run_in_pod(id=1):
 
 for ii in range(1,11+1):
     run_in_pod(ii)
+    # kill_job_in_pod(ii)
