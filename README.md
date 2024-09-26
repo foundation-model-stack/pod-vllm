@@ -50,3 +50,8 @@ python copy2image.py
 # Step-3 : send jobs to pods
 
 
+```
+python run.py
+```
+
+Jobs runs within a tmux session, that we can inspect at each pod. 
