@@ -21,7 +21,7 @@ Design principles:
 # Step-1 : create pods
 
 * modify `vllm-pod.yaml` file to get
-  + the correct PVC names, e.g. `llama-tuan` and `llama-results-tuan`
+  + the correct PVC names, e.g. `llama-tuan` and `llama-results-tuan` [one is used to host the model checkpoint and data; one is used to host the model output]
   + the secret key `GIT_PAT`
   + the right image name
 
@@ -43,11 +43,22 @@ We don't want to copy data to pod via `kubectl cp` as it overloads K8s/OCP API S
 
 Here, we only copy scripts file to each pod. The datalake library is copied as well to support operations with S3 storage.
 
+Before running this, we need to make sure we add the `HF_TOKEN` to `run_in_image.sh` script. This is needed to download the model from HF.
+
 ```
 python copy2image.py
 ```
 
-# Step-3 : send jobs to pods
+# Step-3 : copy data to VPC storage
+
+We only need to use one pod, 
+```
+./enter.sh 01
+```
+and from there perform data downloading to `/model/data` path. There are several example from [`datalake/scripts/copy_data.py` script](https://github.ibm.com/Common-TimeSeries-Analytics-Library/datalake/blob/master/scripts/copy_data.py)
+
+
+# Step-4 : send jobs to pods
 
 
 ```
