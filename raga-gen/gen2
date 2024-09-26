@@ -412,9 +412,9 @@ def process(i, save_immediately=False):
     for output in outputs:
         for out in output.outputs:
             if save_full_dict:
-                var.prompts[i]["response"] = out.text.replace("\n", "\\n")
-                var.prompts[i]["tokens_count"] = len(out.token_ids)
-                var.prompts[i]["tokens"] = " ".join(list(map(str, out.token_ids)))
+                var.prompts[i]["response"] = out.text #.replace("\n", "\\n")
+                # var.prompts[i]["tokens_count"] = len(out.token_ids)
+                # var.prompts[i]["tokens"] = " ".join(list(map(str, out.token_ids)))
             if save_immediately:
                 if save_full_dict:
                     f = open(
@@ -432,7 +432,8 @@ def process(i, save_immediately=False):
                         encoding="utf-8",
                     )
                     f.write("%-6d -- " % (len(out.token_ids)))
-                    f.write(out.text.replace("\n", "\\n"))
+                    # f.write(out.text.replace("\n", "\\n"))
+                    f.write(out.text) #.replace("\n", "\\n"))
                     f.write("\n")
                     f.close()
 
