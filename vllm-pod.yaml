@@ -23,6 +23,8 @@ spec:
               secretKeyRef:
                 name: hcir-git-access
                 key: "accesstoken"
+          - name: NUM_PODS
+            value: ${NUM_PODS}
       securityContext:
         privileged: true
         runAsUser: 0

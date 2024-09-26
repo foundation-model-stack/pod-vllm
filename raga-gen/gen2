@@ -1,0 +1,439 @@
+#!/usr/bin/env python3
+
+from os import walk
+import pathlib
+import argparse
+import json
+import numpy as np
+import os
+import time
+import torch
+import transformers
+import vllm
+
+"""
+The code is adopted based on code to invoke vllm.LLM 
+shared by Nelson Mimura Gonzalez
+with improvements listed on README.md file, e.g. load-balancing,
+checkpoints and recover, better output files for performance
+
+We launch N pods, each handle a portition of the same file
+   portion = num_rows --> once done: mark it as done and move to new run
+
+"""
+
+
+class StatusFile:
+    def __init__(self, id: str, num_workers: int, fname="/results/status.json"):
+        self.fname = fname
+        self.id = id  # pod-id 1-based index
+        self.data = self.read()
+        # read worker-specific file
+        self.data.update(self.read(self.local_fname))
+        self.num_workers = num_workers
+        self.num_lines = 100
+
+    @property
+    def local_fname(self):
+        "status file in the worker scope"
+        return f"{self.fname}_{self.id}"
+
+    def save(self, data=None):
+        fname = self.local_fname
+        if data is None:
+            data = self.data
+        with open(fname, "w") as f:
+            json.dump(data, f)
+
+    def files2process(self):
+        """return an iterable of files to process"""
+        metadata = self.data["metadata"]
+        for fname in metadata.keys():
+            if not fname in self.data["completed"]:
+                yield fname
+
+    def update_metadata(self, mdict):
+        """a dictionary of some metadata"""
+        if not self.data["metadata"]:
+            self.data["metadata"].update(mdict)
+        else:
+            self.data["metadata"] = mdict
+
+    def configure_run(self, last_run, **kwargs):
+        self.data["run"][last_run] = {
+            # each successful run process these many lines
+            "num_lines": self.num_lines,
+            "num_workers": self.num_workers,
+        }
+        self.data["run"][last_run].update(kwargs)
+
+    def get_data(self, fname, prompt_only=False):
+        num_workers = self.num_workers
+        worker_id = self.id
+        num_rows = self.num_lines
+        # num_rows = self.data["metadata"][fname] // num_workers
+        # TUAN: ASSUMPTION - one-based pod-id
+
+        last_run = 0
+        next_start_row = 1
+        if self.data["run"]:
+            last_run = list(self.data["run"].keys())[-1]
+            if self.data["run"][last_run]["done"]:
+                last_run += 1
+                next_start_row = self.data["run"][last_run]["next_start_row"]
+        start_row = (int(worker_id) - 1) * num_rows + 1  # 1-based index
+        mdict = {
+            "file_name": fname,
+            "start_row": start_row,
+            "num_rows": num_rows,
+            "next_start_row": num_workers * num_rows + next_start_row,
+            "done": False,
+        }
+        # self.fake_fname = f"{fname}__{start_row}_{num_rows}"
+        self.configure_run(last_run, **mdict)
+        self.save()
+        lines = read_prompt(fname, start_row, start_row + num_rows - 1, keep_all=(prompt_only is False))
+        self.fake_fname = f"{fname}__{start_row}_{len(lines)}"
+        return lines
+
+    def read(self, fname=None):
+        if fname is None:
+            fname = self.fname
+        try:
+            with open(fname) as f:
+                mdict = json.load(f)
+        except FileNotFoundError:
+            mdict = {
+                "run": {},
+                "metadata": {},  # line count for each file
+                "completed": [],  # list of completed files
+            }
+        # and read from all component files for global-data
+        path = str(pathlib.Path(fname).parent)
+        files = [
+            filename
+            for filename in os.listdir(path)
+            if filename.startswith("status.json_")
+        ]
+        for fname in files:
+            try:
+                with open(fname) as f:
+                    mdict["completed"].update(json.load(f)["completed"])
+            except (FileNotFoundError, KeyError):
+                pass
+
+        self.data = mdict
+        return mdict
+
+
+def read_prompt(filepath, start, end, keep_all=False):
+    """return 
+    * a list of text, representing a prompt to LLM
+    * a list of dict (when keep_all=True)
+    """
+    from itertools import islice
+
+    with open(filepath) as input_file:
+        lines = islice(input_file, start - 1, end)
+        lines = map(lambda s: s.strip(), lines)
+        # lines = list(lines)
+        if keep_all:
+            lines = [json.loads(line) for line in lines]
+        else:
+            lines = [json.loads(line)["prompt"] for line in lines]
+
+    return lines
+    # for line in lines:
+    #     print(line)
+
+
+def banner(s):
+    print()
+    print(80 * "=")
+    print(s)
+    print(80 * "=")
+    print()
+
+
+def time_get():
+    return time.time_ns()
+
+
+def time_diff(t1, t0):
+    return float(t1 - t0) / 1e9
+
+
+def time_fmt(t):
+    t = str(t).zfill(9)
+    return "%s.%s" % (t[:-9], t[-9:])
+
+
+def avg(x):
+    return np.mean(x)
+
+
+def std(x):
+    return np.std(x)
+
+
+def med(x):
+    return np.median(x)
+
+
+def mad(x):
+    return med(np.absolute(x - med(x)))
+
+
+class par:
+    pass
+
+
+class var:
+    pass
+
+
+def main():
+    banner("parameters")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", type=str, required=True)
+    parser.add_argument("-t", "--tp", type=int, required=True)
+    parser.add_argument("-b", "--batch", type=int, required=True)
+    parser.add_argument("-o", "--output", type=str, required=True)
+    parser.add_argument("-x", "--tokens", type=int, required=True)
+    parser.add_argument("-s", "--start_at", type=int, default=0)
+    parser.add_argument("-e", "--end_at", type=int)
+
+    SINGLE_FILE = False
+
+    if SINGLE_FILE:
+        parser.add_argument("-f", "--file", type=str, required=True)
+    else:
+        parser.add_argument("-p", "--data_path", type=str, required=True)
+        # we need this to devide the jobs
+        parser.add_argument("-w", "--num_workers", type=int, required=True)
+
+    parser.parse_args(namespace=par)
+
+    if not os.path.exists(par.output):
+        os.makedirs(par.output)
+
+    var.llm = vllm.LLM(
+        model=par.model,
+        dtype=torch.float16,
+        tensor_parallel_size=par.tp,
+        gpu_memory_utilization=0.95,
+        # https://github.com/vllm-project/vllm/issues/6641
+        max_model_len=64000,
+    )
+
+    var.sampling_params = vllm.SamplingParams(
+        max_tokens=par.tokens,
+        # min_tokens=???,  [before EOS or stop_token_ids is generated]
+        # stop_token_ids: List of tokens that stop the generation when they are generated. The returned output will contain the stop tokens unless the stop tokens are special tokens.
+        # stop: List of strings that stop the generation when they are generated.  The returned output will not contain the stop strings.
+        ignore_eos=False,
+    )
+
+    var.prompts = []
+    if SINGLE_FILE:
+        for line in open(par.file):
+            var.prompts.append(json.loads(line)["prompt"])
+        process_chunk()
+    else:
+        # read status
+        import socket
+
+        # a pod is a worker in this case
+        worker_id = socket.gethostname().split("-")[-1]
+        assert int(worker_id) > 0, f"ERROR: pod-id must be an non-zero integer"
+        num_workers = par.num_workers
+        status = StatusFile(worker_id, num_workers)
+        status.update_metadata(
+            get_files_and_offset(
+                par.data_path,
+            )
+        )
+
+        status.save()
+        stop_request = False
+        save_immediately = False
+        for fname in status.files2process():
+            # process this file
+            while True:
+                lines = status.get_data(fname)
+                var.prompts = lines
+                if len(lines) > 0:
+                    par.file = status.fake_fname
+                    stop_request = process_chunk(save_immediately)
+                if stop_request:
+                    return
+                if len(lines) < status.num_lines and (
+                    fname not in status.data["completed"]
+                ):
+                    status.data["completed"][fname] = id
+                    break
+                if is_stop():
+                    return
+            if is_stop() or stop_request:
+                return
+        # process_chunk()
+
+
+def get_files_and_offset(mypath, num_worker=11):
+    """return a dict
+    key = filename
+    value = number of lines in the file
+    """
+    mdict = {}
+    for dirpath, dirnames, filenames in walk(mypath):
+        path = str(pathlib.Path(mypath).parent)
+        dirname = dirpath[len(path) + 1 :]
+        for fname in filenames:
+            fname = pathlib.Path(dirpath) / fname
+            num_lines = sum(1 for _ in open(fname))
+            mdict[str(fname)] = num_lines
+    return mdict
+
+
+def process_chunk(save_immediately=True):
+    var.n = len(var.prompts)
+    var.iters = int(var.n / par.batch)
+
+    if var.n % par.batch != 0:
+        print("cannot divide # prompts by batch size")
+        print()
+        exit(1)
+
+    print("model      =", par.model)
+    print("tp         =", par.tp)
+    print("batch size =", par.batch)
+    print("file       =", par.file)
+    print("prompts    =", var.n)
+    print("iters      =", var.iters)
+
+    banner("vllm")
+
+    stop_request = False
+    for i in range(var.iters):
+        if par.start_at > i:
+            continue
+        if par.end_at == i:
+            break
+        process(i, save_immediately)
+        if is_stop_immediately(i):
+            # save status
+            stop_request = True
+            break
+
+    if not save_immediately:
+        f = open(
+            "%s/%s.txt" % (par.output, os.path.basename(par.file)),
+            "w",
+            encoding="utf-8",
+        )
+        for j in range(var.n):
+            if 'response' not in var.prompts[j]:
+                break
+            f.write(json.dumps(var.prompts[j]))
+            f.write("\n")
+        f.close()
+    banner("done")
+    return stop_request
+
+
+def is_stop():
+    fname = "/model/stop_run_end_chunk.txt"
+    try:
+        with open(fname, "r") as f:
+            first_line = f.readline()
+        return bool(first_line)
+    except FileNotFoundError:
+        pass
+    return False
+
+
+def is_stop_immediately(n):
+    fname = "/model/stop_run_immediately.txt"
+    # check every 8 iterations
+    if ((n >> 3) << 3) == n:
+        try:
+            with open(fname, "r") as f:
+                first_line = f.readline()
+            return bool(first_line)
+        except FileNotFoundError:
+            pass
+    return False
+
+
+def process(i, save_immediately=False):
+    banner("process %d / %d" % (i + 1, var.iters))
+
+    save_full_dict = False
+    if isinstance(var.prompts[0], dict):
+        # process dict
+        save_full_dict = True
+        prompts = [x["prompt"] for x in var.prompts[i * par.batch : (i + 1) * par.batch]]
+    else:
+        prompts = var.prompts[i * par.batch : (i + 1) * par.batch]
+
+    t0 = time_get()
+    outputs = var.llm.generate(prompts, var.sampling_params)
+    t1 = time_get()
+    dt = time_diff(t1, t0)
+
+    reqs = 0
+    toks = 0
+
+    outs = []
+
+    for output in outputs:
+        for out in output.outputs:
+            if save_full_dict:
+                var.prompts[i]["response"] = out.text.replace("\n", "\\n")
+                var.prompts[i]["tokens_count"] = len(out.token_ids)
+                var.prompts[i]["tokens"] = " ".join(list(map(str, out.token_ids)))
+            if save_immediately:
+                if save_full_dict:
+                    f = open(
+                        "%s/%s.txt" % (par.output, os.path.basename(par.file)),
+                        "a",
+                        encoding="utf-8",
+                    )
+                    f.write(json.dumps(var.prompts[i]))
+                    f.write("\n")
+                    f.close()
+                else:
+                    f = open(
+                        "%s/%s.txt" % (par.output, os.path.basename(par.file)),
+                        "a",
+                        encoding="utf-8",
+                    )
+                    f.write("%-6d -- " % (len(out.token_ids)))
+                    f.write(out.text.replace("\n", "\\n"))
+                    f.write("\n")
+                    f.close()
+
+                    f = open(
+                        "%s/%s.ids" % (par.output, os.path.basename(par.file)),
+                        "a",
+                    )
+
+                    f.write("%-6d -- " % (len(out.token_ids)))
+                    f.write(" ".join(list(map(str, out.token_ids))))
+                    f.write("\n")
+                    f.close()
+
+            reqs += 1
+            toks += len(out.token_ids)
+
+    print()
+    print("dt    = %.1f" % (dt))
+    print("reqs  = %d" % (reqs))
+    print("req/s = %.1f" % (reqs / dt))
+    print("toks  = %d" % (toks))
+    print("tok/s = %.1f" % (toks / dt))
+
+
+if __name__ == "__main__":
+    main()
