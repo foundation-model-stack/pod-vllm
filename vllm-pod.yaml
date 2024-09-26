@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gen-pod-${id}
+spec:
+  serviceAccountName: appwrapper
+  imagePullSecrets:
+    - name: us-icr-pull
+  containers:
+    - image: us.icr.io/cil15-shared-registry/cmisale/pytorchbase:2.3cu121
+      command:
+        - bash
+        - -c
+        - |
+          pip install vllm;
+          apt-get install tmux
+          pip install -U "huggingface_hub[cli]";
+          sleep infinity
+      name: main
+      env:
+          - name: GIT_PAT
+            valueFrom:
+              secretKeyRef:
+                name: hcir-git-access
+                key: "accesstoken"
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests:
+          cpu: 72
+          memory: 1000Gi
+          nvidia.com/gpu: 8
+        limits:
+          cpu: 72
+          memory: 1000Gi
+          nvidia.com/gpu: 8
+      volumeMounts:
+      - name: model
+        mountPath: /model
+      - name: results
+        mountPath: /results
+      - name: dshm
+        mountPath: "/dev/shm"
+  volumes:
+    - name: model
+      persistentVolumeClaim:
+        claimName: llama-tuan
+    - name: results
+      persistentVolumeClaim:
+        claimName: llama-results-tuan
+    - name: dshm
+      emptyDir:
+        medium: Memory
+  restartPolicy: Never
