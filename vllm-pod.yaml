@@ -13,7 +13,7 @@ spec:
         - -c
         - |
           pip install vllm;
-          apt-get install tmux
+          apt-get update; apt-get install tmux vim -y;
           pip install -U "huggingface_hub[cli]";
           sleep infinity
       name: main
