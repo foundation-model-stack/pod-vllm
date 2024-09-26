@@ -20,7 +20,14 @@ Design principles:
 * adaptable - if there are more resource available, it can be restarted and use more resource
 
 NOTE: The code can be adopted to use Ray or Spark on K8s/OCP to do this job, but this is a simple approach with performant and easy to run with minimal installation required for K8s/OCP admin.
- 
+
+# Step-0 : configure env.
+
+```
+export NUM_PODS=11
+```
+if you have 11 nodes that you can run 11 pods. This is needed for each step.
+
 # Step-1 : create pods
 
 * modify `vllm-pod.yaml` file to get
