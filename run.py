@@ -1,9 +1,11 @@
 import subprocess
 import os
 
-NUM_PODS = os.environ.get("NUM_PODS", 11)
+NUM_PODS = int(os.environ.get("NUM_PODS", 11))
 POD_PREFIX = os.environ.get("POD_PREFIX", "gen-pod")
 POD_WORKDIR = "/app"
+
+print(f"We are using {NUM_PODS} pods")
 
 def kill_job_in_pod(id=1):
     podname = f"{POD_PREFIX}-{str(id).zfill(2)}"
@@ -53,6 +55,6 @@ def run_in_pod(id=1):
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         output = result.stdout.decode("utf-8")
 
-for ii in range(1,11+1):
+for ii in range(1,NUM_PODS+1):
     run_in_pod(ii)
     # kill_job_in_pod(ii)

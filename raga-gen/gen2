@@ -79,8 +79,8 @@ class StatusFile:
         if self.data["run"]:
             last_run = list(self.data["run"].keys())[-1]
             if self.data["run"][last_run]["done"]:
-                last_run += 1
-                next_start_row = self.data["run"][last_run]["next_start_row"]
+                next_start_row = int(self.data["run"][last_run]["next_start_row"])
+                last_run = int(last_run) + 1
             else:
                 # rerun it
                 start_row = int(self.data["run"][last_run]["start_row"])
@@ -93,7 +93,7 @@ class StatusFile:
                     }
                 )
                 return lines
-        start_row = (int(worker_id) - 1) * num_rows + 1  # 1-based index
+        start_row = (int(worker_id) - 1) * num_rows + next_start_row  # 1-based index
         mdict = {
             "file_name": fname,
             "start_row": start_row,
