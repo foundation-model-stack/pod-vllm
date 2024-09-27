@@ -107,3 +107,7 @@ python run.py -k
 python run.py --kill
 
 ```
+
+# Step-5 : sync generated data back to COS
+
+You can use the script in `copy_data.py` to run a CRON job which regularly (e.g. every 3 hours) to upload new data files to COS.
