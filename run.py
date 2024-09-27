@@ -1,10 +1,12 @@
 import subprocess
 import os
 import argparse
+from utils import load_environment_from_shell_script
 
-NUM_PODS = int(os.environ.get("NUM_PODS", 11))
-POD_PREFIX = os.environ.get("POD_PREFIX", "gen-pod")
-POD_WORKDIR = "/app"
+load_environment_from_shell_script("env.sh")
+NUM_PODS = int(os.environ.get("NUM_PODS"))
+POD_PREFIX = os.environ.get("POD_PREFIX")
+POD_WORKDIR = os.environ.get("POD_WORKDIR")
 
 print(f"We are using {NUM_PODS} pods")
 
