@@ -3,7 +3,7 @@
 # RUN 1 pod: ./run.sh 01
 
 # run 11 pods from 01 to 11
-export NUM_PODS=11
+source env.sh
 for id in $(seq -f "%02g" 1 ${NUM_PODS})
 do
     echo $id

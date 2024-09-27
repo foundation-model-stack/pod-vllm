@@ -3,7 +3,7 @@ import os
 import pathlib
 import subprocess
 
-NUM_PODS = os.environ.get("NUM_PODS", 11)
+NUM_PODS = int(os.environ.get("NUM_PODS", 11))
 POD_PREFIX = "gen-pod"
 POD_WORKDIR = "/app"
 

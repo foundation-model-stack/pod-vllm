@@ -1,5 +1,6 @@
 #!/bin/bash
 
+source env.sh
 export WORKER_POOL="${NUM_PODS:-11}"
 export HF_TOKEN=
 export BASE_PATH="/model/data/Cosmopedia_Prompts"
