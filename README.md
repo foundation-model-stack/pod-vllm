@@ -23,10 +23,13 @@ NOTE: The code can be adopted to use Ray or Spark on K8s/OCP to do this job, but
 
 # Step-0 : configure env.
 
+run this first on the shell you run the next steps, as this information is needed for each step.
+
+Update the `env.sh` script) and run this
 ```
-export NUM_PODS=11
+source env.sh
 ```
-if you have 11 nodes that you can run 11 pods. This is needed for each step.
+
 
 # Step-1 : create pods
 
@@ -76,3 +79,12 @@ python run.py
 ```
 
 Jobs runs within a tmux session, that we can inspect at each pod. 
+
+NOTE: To kill jobs, run
+
+```
+python run.py -k
+# or
+python run.py --kill
+
+```
