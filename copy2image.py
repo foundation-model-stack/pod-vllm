@@ -29,6 +29,7 @@ def copy2pod(id=1):
     fnames = [
         "raga-gen.tar",
         "datalake-0.20.0.tar.gz",
+        "copy_data.py",
         "run_in_image.sh",  # put at the end
     ]
     cmd = "tar -cvf raga-gen.tar raga-gen"
