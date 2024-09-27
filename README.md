@@ -80,8 +80,27 @@ python run.py
 
 Jobs runs within a tmux session, that we can inspect at each pod. 
 
-NOTE: To kill jobs, run
+NOTE: To kill jobs, there are a few options
 
+1. 'signal' to stop - job waits until checkpoint before stopping itself:
+
+  log into one pod
+```
+./enter.sh 01
+```
+Edit the file `/model/stop_run_end_chunk.txt` and add `1` to the first line
+
+ 2. 'signal' to stop - job stop gracefully in a few minutes:
+
+  log into one pod
+```
+./enter.sh 01
+```
+Edit the file `/model/stop_run_immediately.txt` and add `1` to the first line
+  
+3. stop immediately by killing the process
+
+run from the local machine
 ```
 python run.py -k
 # or
