@@ -54,7 +54,8 @@ The pods are named using the convention `gen-pod-<id>` with `<id>` is a 2-letter
 
 We don't want to copy data to pod via `kubectl cp` as it overloads K8s/OCP API Server. Data should be copied to S3 storage, e.g. IBM COS; and then download to mounted VPC storage. 
 
-Here, we only copy scripts file to each pod. The datalake library is copied as well to support operations with S3 storage.
+Here, we only copy scripts file to each pod. The datalake library is copied as well to support operations with S3 storage. Therefore, you need to have the 
+gz file of this [library](https://github.ibm.com/Common-TimeSeries-Analytics-Library/datalake), e.g. `datalake-0.20.0.tar.gz`.
 
 Before running this, we need to make sure we add the `HF_TOKEN` to `run_in_image.sh` script. This is needed to download the model from HF.
 
@@ -107,3 +108,7 @@ python run.py -k
 python run.py --kill
 
 ```
+
+# Step-5 : sync generated data back to COS
+
+You can use the script in `copy_data.py` to run a CRON job which regularly (e.g. every 3 hours) to upload new data files to COS.
