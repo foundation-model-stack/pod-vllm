@@ -20,9 +20,11 @@ def main():
     while True:
         import importlib
 
+        input("Press Enter to continue...")
         importlib.reload(utils)
         # reload with a different input file
-        par.file = change_file(par.file)
+        par.file = utils.change_file(par.file)
+        print(par.file)
         var.prompts = read_prompt(par.file, start, end, keep_all=True)
 
         i = 0
@@ -35,10 +37,9 @@ def main():
         else:
             prompts = var.prompts[i * par.batch : (i + 1) * par.batch]
 
-        input("Press Enter to continue...")
-        from utils import update_prompt
+        from utils import update_prompt_exp
 
-        prompts = update_prompt(prompts)
+        prompts = update_prompt_exp(prompts)
 
         if not os.path.exists(par.output):
             os.makedirs(par.output)
@@ -53,7 +54,7 @@ def main():
             for out in output.outputs:
                 var.prompts[i]["response"] = out.text  # .replace("\n", "\\n")
                 print("===PROMPT===")
-                print(prompts[i]["prompt"])
+                print(prompts[i])
                 print("===RESPONSE===")
                 pprint.pprint(out.text)
                 print("===END RESPONSE===")
