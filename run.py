@@ -7,8 +7,9 @@ load_environment_from_shell_script("env.sh")
 NUM_PODS = int(os.environ.get("NUM_PODS"))
 POD_PREFIX = os.environ.get("POD_PREFIX")
 POD_WORKDIR = os.environ.get("POD_WORKDIR")
+START_OFFSET = int(os.environ.get("SKIP_PODS", 0)) + 1
 
-print(f"We are using {NUM_PODS} pods")
+print(f"We are using {NUM_PODS-START_OFFSET+1} pods")
 
 
 def kill_job_in_pod(id=1):
@@ -16,7 +17,7 @@ def kill_job_in_pod(id=1):
     tmux = "tmux kill-session -t 0 "
     cmd = f""" bash -c " {tmux};"  """
     cmd = f"kubectl exec {podname} -- {cmd}"
-    print(cmd)
+    # print(cmd)
     result = subprocess.run(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
     )
@@ -54,7 +55,7 @@ def run_in_pod(id=1):
     )
     for fname in fnames:
         cmd = f"kubectl cp {fname} {podname}:{POD_WORKDIR}/"
-        print(cmd)
+        # print(cmd)
         result = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
         )
@@ -68,7 +69,7 @@ def run_in_pod(id=1):
         elif fname.startswith("datalake"):
             cmd = f"pip install {POD_WORKDIR}/{fname}"
         cmd = f"kubectl exec {podname} -- {cmd}"
-        print(cmd)
+        # print(cmd)
         result = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
         )
@@ -79,8 +80,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-k", "--kill", default=False, required=False, action="store_true")
 args = parser.parse_args()
 if args.kill:
-    for ii in range(1, NUM_PODS + 1):
+    for ii in range(START_OFFSET, NUM_PODS + 1):
         kill_job_in_pod(ii)
 else:
-    for ii in range(1, NUM_PODS + 1):
+    for ii in range(START_OFFSET, NUM_PODS + 1):
         run_in_pod(ii)
