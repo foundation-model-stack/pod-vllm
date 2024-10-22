@@ -63,7 +63,7 @@ def run_in_pod(id=1):
     for fname in fnames:
         tmux = "tmux send-keys -t 0 "
         if fname.endswith(".sh"):
-            cmd = f""" bash -c "chmod +x {POD_WORKDIR}/{fname} &&  cd {POD_WORKDIR} && {tmux}  'sh ./{fname} 2>&1 | tee log_output.txt' C-m;"  """
+            cmd = f""" bash -c "chmod +x {POD_WORKDIR}/{fname} &&  cd {POD_WORKDIR} && {tmux}  'cd {POD_WORKDIR}; sh ./{fname} 2>&1 | tee log_output.txt' C-m;"  """
         elif fname.endswith(".tar"):
             cmd = f"""  bash -c "cd {POD_WORKDIR} && tar -xvf {POD_WORKDIR}/{fname}" """
         elif fname.startswith("datalake"):

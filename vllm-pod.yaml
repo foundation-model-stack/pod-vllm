@@ -7,12 +7,13 @@ spec:
   imagePullSecrets:
     - name: us-icr-pull
   containers:
-    - image: us.icr.io/cil15-shared-registry/cmisale/pytorchbase:2.3cu121
+    - image: us.icr.io/cil15-shared-registry/cmisale/pytorchbase:cu124
       command:
         - bash
         - -c
         - |
-          pip install vllm;
+          pip install vllm --no-dependencies;
+          pip install psutil msgspec pydantic compressed-tensors gguf cloudpickle mistral-common py-cpuinfo aiohttp openai;
           apt-get update; apt-get install tmux vim -y;
           pip install -U "huggingface_hub[cli]";
           sleep infinity

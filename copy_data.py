@@ -20,6 +20,7 @@ def upload_prompts_data(num_processes=100):
     )
 
 
+
 def download_prompts_data(num_processes=100):
     """
     s3://cos-optimal-llm-pile/torchtitan/outputs/
@@ -49,6 +50,15 @@ def upload_prompts_data_output(num_processes=100):
     s3Client = create_s3Client(environ)
     base_folder = "/results/Llama-3.1-405B-FP8_output/"
     target_folder = "data/synthetic_using/Cosmopedia_Prompts"
+    print(f"copying from {base_folder} to {target_folder}")
+    s3Client.upload_files(
+        base_folder,
+        prefix=target_folder,
+        num_processes=num_processes,
+        verbose=True,
+    )
+    base_folder = "/results/status/"
+    target_folder = "data/synthetic_using/Cosmopedia_Prompts/status/"
     print(f"copying from {base_folder} to {target_folder}")
     s3Client.upload_files(
         base_folder,

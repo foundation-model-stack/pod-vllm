@@ -26,8 +26,10 @@ We launch N pods, each handle a portition of the same file
 
 
 class StatusFile:
-    def __init__(self, id: str, num_workers: int, fname="/results/status.json"):
+    def __init__(self, id: str, num_workers: int, fname="/results/status/status.json"):
         self.fname = fname
+        folder_path = os.path.dirname(fname)
+        os.makedirs(folder_path, exist_ok=True)
         self.id = id  # pod-id 1-based index
         self.data = self.read()
         # read worker-specific file
@@ -58,11 +60,23 @@ class StatusFile:
                     keep_processing = True
                     yield fname
 
+    def exclude_files(self):
+        fname = "/model/data/exclude_these_files.txt"
+        files = []
+        try:
+            with open(fname, "r") as f:
+                lines = f.readlines()
+            files = [x.strip() for x in lines]
+        except FileNotFoundError:
+            pass
+        return files
+
     def files2process(self):
         """return an iterable of files to process"""
         metadata = self.data["metadata"]
+        excluded_files =  self.exclude_files()
         for fname in metadata.keys():
-            if not fname in self.data["completed"]:
+            if (not fname in self.data["completed"]) and fname not in excluded_files:
                 yield fname
 
     def update_metadata(self, mdict):
